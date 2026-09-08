@@ -1,8 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { pedestrianHeightForDomeRadius } from './pedestrian.ts';
+import * as THREE from 'three';
+import { Pedestrian, pedestrianHeightForDomeRadius } from './pedestrian.ts';
 
-test('scales a 1.75 m pedestrian to 3.5 dome diameters', () => {
+test('moves toward a target without teleporting', () => {
+  const walker = new Pedestrian({ role: 'manual', speed: 2 });
+
+  walker.setTerrainTarget(new THREE.Vector3(4, 0, 0));
+  walker.update(.5);
+
+  assert.equal(walker.position.x, 1);
+});
+
+test('completes only after arriving at the final path point', () => {
+  const walker = new Pedestrian({ role: 'path', speed: 10 });
+
+  walker.setPath([new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 0)], 0);
+  walker.stepPath(1);
+
+  assert.equal(walker.update(.1), false);
+  assert.equal(walker.complete, false);
+  assert.equal(walker.update(.1), true);
+  assert.equal(walker.complete, true);
+});
+
+test('retains the existing scale and distinguishes the manual cap', () => {
   assert.equal(pedestrianHeightForDomeRadius(1), 7);
   assert.equal(pedestrianHeightForDomeRadius(.5), 3.5);
+  assert.equal(new Pedestrian({ role: 'manual', speed: 1 }).hasCap, true);
+  assert.equal(new Pedestrian({ role: 'roaming', speed: 1, clothes: { upper: '#f00', lower: '#00f' } }).hasCap, false);
 });
