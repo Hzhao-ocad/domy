@@ -16,6 +16,7 @@ export class Pedestrian {
   private target = new THREE.Vector3();
   private samples: readonly THREE.Vector3[] = [];
   private sampleIndex = 0;
+  private followingPath = false;
 
   constructor(options: PedestrianOptions) {
     this.options = options;
@@ -47,6 +48,8 @@ export class Pedestrian {
       const brim = new THREE.Mesh(new THREE.CylinderGeometry(.19, .19, .025, 12), shirt);
       crown.position.z = 1.31;
       brim.position.set(0, -.1, 1.28);
+      crown.rotation.x = Math.PI / 2;
+      brim.rotation.x = Math.PI / 2;
       cap.add(crown, brim);
       this.group.add(cap);
     }
@@ -65,6 +68,7 @@ export class Pedestrian {
   setTerrainTarget(target: THREE.Vector3) {
     this.target.copy(target);
     this.complete = false;
+    this.followingPath = false;
   }
 
   setPath(samples: readonly THREE.Vector3[], index: number) {
@@ -73,18 +77,21 @@ export class Pedestrian {
     this.position.copy(samples[index]);
     this.target.copy(samples[index]);
     this.complete = false;
+    this.followingPath = true;
   }
 
   stepPath(delta: -1 | 1) {
     this.sampleIndex = Math.max(0, Math.min(this.samples.length - 1, this.sampleIndex + delta));
     this.target.copy(this.samples[this.sampleIndex]);
+    this.complete = false;
+    this.followingPath = true;
   }
 
   update(delta: number): boolean {
     const distance = this.position.distanceTo(this.target), step = Math.min(this.options.speed * delta, distance);
     if (distance) this.position.add(this.target.clone().sub(this.position).normalize().multiplyScalar(step));
     const arrived = distance <= step;
-    if (this.samples.length > 1 && this.sampleIndex === this.samples.length - 1 && arrived) this.complete = true;
+    if (this.followingPath && this.samples.length > 1 && this.sampleIndex === this.samples.length - 1 && arrived) this.complete = true;
     return arrived;
   }
 }
