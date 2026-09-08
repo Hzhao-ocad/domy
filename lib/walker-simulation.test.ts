@@ -26,3 +26,14 @@ test('creates a horizontal route that clears a centered obstacle', () => {
   assert.ok(Math.abs(route.at(-1)!.y - route[0].y) < Math.abs(route.at(-1)!.x - route[0].x));
   assert.ok(route.every((point) => Math.hypot(point.x, point.y) >= 4));
 });
+
+test('rejects a route whose segments cannot clear the Dome path', () => {
+  assert.throws(() => createRoamingRoute({
+    bounds: { minX: -20, maxX: 20, minY: -20, maxY: 20 },
+    domePath: [{ x: -15, y: 0 }, { x: 15, y: 0 }],
+    blockedCircles: [],
+    clearance: 1,
+    maxAttempts: 1,
+    random: () => .5,
+  }), /Could not create a clear roaming route/);
+});

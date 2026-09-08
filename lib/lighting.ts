@@ -65,6 +65,10 @@ export function activateDomes(
   indexes: readonly number[],
   time: number,
 ): LightingState {
+  if (indexes.length === 0) {
+    return state.activeIndexes.length === 0 ? state : clearActivation(state, time);
+  }
+
   const activeIndexes = [...new Set(indexes)];
   const propagationDirections = state.behavior === 'curiosity'
     ? activeIndexes.map(() => null)

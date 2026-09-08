@@ -68,6 +68,22 @@ test('decays every dome by 50 percent every 50 ms after the cursor leaves', () =
   assert.deepEqual(state.brightness, [0, 0.25, 0]);
 });
 
+test('treats an empty Direction source set as an exit without resetting its decay clock', () => {
+  let state = createLightingState(3, {
+    propagationDelay: 300,
+    propagationFactor: .67,
+    decayInterval: 50,
+    decayAmount: .5,
+  });
+
+  state = activateDomes(state, [1], 0);
+  state = activateDomes(state, [], 0);
+  state = activateDomes(state, [], 25);
+  state = advanceLighting(state, 50);
+
+  assert.deepEqual(state.brightness, [0, .5, 0]);
+});
+
 test('decays an active source after refreshing its trigger brightness', () => {
   let state = createLightingState(1, {
     propagationDelay: 300,
@@ -159,4 +175,21 @@ test('gradually restores every Curiosity dome after the pedestrian leaves', () =
   state = advanceLighting(state, 100);
 
   assert.deepEqual(state.brightness, [1, 1, 1, 0.9375, 0.625]);
+});
+
+test('treats repeated empty Curiosity source sets as one exit recovery wave', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 10,
+    decayAmount: .5,
+  }, 'curiosity');
+
+  state = activateDomes(state, [1], 0);
+  state = advanceLighting(state, 20);
+  state = activateDomes(state, [], 20);
+  state = activateDomes(state, [], 30);
+  state = advanceLighting(state, 100);
+
+  assert.deepEqual(state.brightness, [1, 1, 1, .9375, .625]);
 });
