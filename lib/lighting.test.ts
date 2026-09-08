@@ -2,10 +2,39 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   activateDome,
+  activateDomes,
   advanceLighting,
   clearActivation,
   createLightingState,
 } from './lighting.ts';
+
+test('refreshes multiple Direction sources together', () => {
+  let state = createLightingState(4, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 10,
+    decayAmount: .5,
+  });
+
+  state = activateDomes(state, [1, 3], 0);
+  state = advanceLighting(state, 10);
+
+  assert.deepEqual(state.brightness, [0, .5, 0, .5]);
+});
+
+test('keeps multiple Curiosity sources lit while other domes fade by nearest source', () => {
+  let state = createLightingState(7, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 10,
+    decayAmount: .5,
+  }, 'curiosity');
+
+  state = activateDomes(state, [1, 4], 0);
+  state = advanceLighting(state, 20);
+
+  assert.deepEqual(state.brightness, [.5, 1, 1, 1, 1, 1, .25]);
+});
 
 test('does not propagate until a second dome confirms the travel direction', () => {
   let state = createLightingState(5, {
