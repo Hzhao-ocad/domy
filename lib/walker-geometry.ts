@@ -43,3 +43,11 @@ export function isNearPerpendicular(
   const scale = Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y);
   return scale === 0 || Math.abs((a.x * b.x + a.y * b.y) / scale) < thresholdCosine;
 }
+
+export function isPointerClick(
+  start: GroundPoint,
+  end: GroundPoint,
+  maximumDistance = 5,
+): boolean {
+  return Math.hypot(end.x - start.x, end.y - start.y) <= maximumDistance;
+}

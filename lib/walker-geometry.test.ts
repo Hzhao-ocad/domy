@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   distancePointToSegment,
   isNearPerpendicular,
+  isPointerClick,
   projectOutsideCircles,
 } from './walker-geometry.ts';
 
@@ -23,4 +24,9 @@ test('measures clearance and rejects perpendicular route directions', () => {
     3,
   );
   assert.equal(isNearPerpendicular({ x: 1, y: 0 }, { x: 0, y: 1 }, .35), true);
+});
+
+test('recognizes a short pointer press without treating a drag as a destination', () => {
+  assert.equal(isPointerClick({ x: 12, y: 18 }, { x: 15, y: 21 }), true);
+  assert.equal(isPointerClick({ x: 12, y: 18 }, { x: 20, y: 18 }), false);
 });

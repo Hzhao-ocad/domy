@@ -21,7 +21,7 @@ import { Pedestrian, pedestrianHeightForDomeRadius } from '@/lib/pedestrian';
 import { mergePreset, updateBehaviorPreset } from '@/lib/preset';
 import { serializePreset } from '@/lib/preset-export';
 import { selectColorPointLights } from '@/lib/scene-lighting';
-import { projectOutsideCircles } from '@/lib/walker-geometry';
+import { isPointerClick, projectOutsideCircles } from '@/lib/walker-geometry';
 import { activeDomeIndexes, createRoamingRoute } from '@/lib/walker-simulation';
 
 type Params = typeof defaults;
@@ -173,6 +173,7 @@ export default function Home() {
     rebuild: () => void;
     refreshPath: () => void;
     reset: () => void;
+    moveManualWalker: (direction: -1 | 1) => void;
     spawnPathWalkers: (count: number) => void;
     spawnRoamingWalkers: (count: number) => void;
   } | null>(null);
@@ -225,7 +226,7 @@ export default function Home() {
       500,
     );
     camera.up.set(0, 0, 1);
-    camera.position.set(10, -17, 14);
+    camera.position.set(28, -48, 40);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(host.clientWidth, host.clientHeight);
@@ -644,17 +645,6 @@ export default function Home() {
     };
     rebuild();
     refreshPath();
-    api.current = {
-      rebuild,
-      refreshPath,
-      spawnPathWalkers,
-      spawnRoamingWalkers,
-      reset: () => {
-        camera.position.set(10, -17, 14);
-        orbit.target.set(0, 0, 0.6);
-        orbit.update();
-      },
-    };
 
     const panel = host.parentElement!.querySelector('.panel')!,
       hudButton = document.createElement('button');
@@ -684,7 +674,8 @@ export default function Home() {
       pointer = new THREE.Vector2(),
       plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
     let dragging: number | null = null,
-      orbiting = false;
+      orbiting = false,
+      pointerStart: { x: number; y: number } | null = null;
     const groundPoint = (e: PointerEvent) => {
       const box = renderer.domElement.getBoundingClientRect();
       pointer.set(
@@ -694,11 +685,7 @@ export default function Home() {
       ray.setFromCamera(pointer, camera);
       return ray.ray.intersectPlane(plane, new THREE.Vector3());
     };
-    const hidePedestrian = () => {
-      manualWalker.visible = false;
-    };
-    const hover = (e: PointerEvent) => {
-      if (dragging !== null || orbiting) return;
+    const setManualTerrainTarget = (e: PointerEvent) => {
       const point = groundPoint(e);
       if (!point) return;
       const target = projectOutsideCircles(
@@ -712,7 +699,25 @@ export default function Home() {
       );
       manualWalker.visible = true;
     };
+    const moveManualWalker = (direction: -1 | 1) => {
+      const samples = pedestrianSamples();
+      if (!manualFollowsPath) {
+        manualPathIndex = nearestPointIndex(
+          samples.map((sample) => ({ x: sample.x, y: sample.y })),
+          { x: manualWalker.position.x, y: manualWalker.position.y },
+        );
+        manualWalker.setPath(samples, manualPathIndex);
+        manualFollowsPath = true;
+      }
+      manualPathIndex = Math.max(
+        0,
+        Math.min(samples.length - 1, manualPathIndex + direction),
+      );
+      manualWalker.stepPath(direction);
+      manualWalker.visible = true;
+    };
     const down = (e: PointerEvent) => {
+      pointerStart = { x: e.clientX, y: e.clientY };
       const p = groundPoint(e);
       if (!p) return;
       const hit = ray.intersectObjects(handles)[0];
@@ -732,43 +737,42 @@ export default function Home() {
               index === dragging ? { x: point.x, y: point.y } : control,
             ),
           }));
-      } else hover(e);
+      }
     };
     const up = (e: PointerEvent) => {
+      const clickedGround = e.button === 0
+        && dragging === null
+        && pointerStart !== null
+        && isPointerClick(pointerStart, { x: e.clientX, y: e.clientY });
       dragging = null;
       orbiting = false;
       orbit.enabled = true;
       if (renderer.domElement.hasPointerCapture(e.pointerId))
         renderer.domElement.releasePointerCapture(e.pointerId);
-      hover(e);
+      if (clickedGround) setManualTerrainTarget(e);
+      pointerStart = null;
     };
     const keydown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
-      const samples = pedestrianSamples();
-      if (!manualFollowsPath) {
-        manualPathIndex = nearestPointIndex(
-          samples.map((sample) => ({ x: sample.x, y: sample.y })),
-          { x: manualWalker.position.x, y: manualWalker.position.y },
-        );
-        manualWalker.setPath(samples, manualPathIndex);
-        manualFollowsPath = true;
-      }
-      manualPathIndex = Math.max(
-        0,
-        Math.min(
-          samples.length - 1,
-          manualPathIndex + (e.key === 'ArrowLeft' ? -1 : 1),
-        ),
-      );
-      manualWalker.stepPath(e.key === 'ArrowLeft' ? -1 : 1);
-      manualWalker.visible = true;
+      moveManualWalker(e.key === 'ArrowLeft' ? -1 : 1);
     };
     renderer.domElement.addEventListener('pointerdown', down);
     renderer.domElement.addEventListener('pointermove', move);
     renderer.domElement.addEventListener('pointerup', up);
-    renderer.domElement.addEventListener('pointerleave', hidePedestrian);
     window.addEventListener('keydown', keydown);
+    api.current = {
+      rebuild,
+      refreshPath,
+      moveManualWalker,
+      spawnPathWalkers,
+      spawnRoamingWalkers,
+      reset: () => {
+        camera.position.set(28, -48, 40);
+        orbit.target.set(0, 0, 0.6);
+        orbit.update();
+      },
+    };
     const resize = () => {
       camera.aspect = host.clientWidth / host.clientHeight;
       camera.updateProjectionMatrix();
@@ -938,7 +942,6 @@ export default function Home() {
       renderer.domElement.removeEventListener('pointerdown', down);
       renderer.domElement.removeEventListener('pointermove', move);
       renderer.domElement.removeEventListener('pointerup', up);
-      renderer.domElement.removeEventListener('pointerleave', hidePedestrian);
       hudButton.removeEventListener('click', toggleHud);
       walkerHud.remove();
       hudButton.remove();
@@ -1022,6 +1025,24 @@ export default function Home() {
             {behavior.label}
           </button>
         ))}
+      </div>
+      <div className="manual-controls">
+        <button
+          type="button"
+          aria-label="Move left"
+          onClick={() => api.current?.moveManualWalker(-1)}
+        >
+          <span aria-hidden="true">←</span>
+          <small>Move left</small>
+        </button>
+        <button
+          type="button"
+          aria-label="Move right"
+          onClick={() => api.current?.moveManualWalker(1)}
+        >
+          <span aria-hidden="true">→</span>
+          <small>Move right</small>
+        </button>
       </div>
       <div className="hint">
         Drag to orbit · Right drag to pan · Scroll to zoom · Drag white nodes to
