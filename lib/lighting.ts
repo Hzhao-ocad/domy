@@ -60,14 +60,24 @@ export function advanceLighting(
   time: number,
 ): LightingState {
   if (state.activeIndex !== null) {
+    const elapsed = time - state.lastDecayTime;
+    const steps = Math.floor(elapsed / state.options.decayInterval);
+    const multiplier = (1 - state.options.decayAmount) ** steps;
     return {
       ...state,
+      lastDecayTime: steps > 0
+        ? state.lastDecayTime + steps * state.options.decayInterval
+        : state.lastDecayTime,
       brightness: state.brightness.map((value, index) => {
         const distance = Math.abs(index - state.activeIndex!);
         const arrivalTime = state.activationTime + distance * state.options.propagationDelay;
-        return time >= arrivalTime
-          ? Math.max(value, roundBrightness(state.options.propagationFactor ** distance))
-          : value;
+        const propagation = roundBrightness(state.options.propagationFactor ** distance);
+        const refreshed = time >= arrivalTime ? propagation : value;
+        const brightness = steps > 0
+          ? roundBrightness(refreshed * multiplier)
+          : refreshed;
+
+        return brightness >= 0.001 ? brightness : 0;
       }),
     };
   }
