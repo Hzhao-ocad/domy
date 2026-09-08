@@ -35,7 +35,7 @@ export const defaults = {
   delay: 20,
   decayStep: 10,
   decay: 0.2,
-  activationDistance: 5,
+  activationDistance: 20,
   showPoints: false,
   showHandles: false,
   showCollisionStrip: false,
