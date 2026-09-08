@@ -1,3 +1,5 @@
+import type { LightingBehavior } from './lighting';
+
 export const defaults = {
   count: 10,
   radius: 1.15,
@@ -31,6 +33,7 @@ export const defaults = {
   pointLightsPerDome: 4,
   pointLightIntensity: 15.4,
   pointLightRange: 22,
+  behavior: 'direction' as LightingBehavior,
   factor: 0.25,
   delay: 20,
   decayStep: 10,

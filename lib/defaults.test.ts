@@ -36,6 +36,7 @@ void test('uses the approved dome environment as the default preset', () => {
     pointLightsPerDome: 4,
     pointLightIntensity: 15.4,
     pointLightRange: 22,
+    behavior: 'direction',
     factor: 0.25,
     delay: 20,
     decayStep: 10,

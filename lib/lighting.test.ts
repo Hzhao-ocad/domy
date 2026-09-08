@@ -83,3 +83,51 @@ test('propagates toward lower indexes when the pedestrian moves backward', () =>
 
   assert.deepEqual(state.brightness, [0, 0, 0, 0.5, 1, 1]);
 });
+
+test('keeps Curiosity fully lit until entry, then fades domes from far to near', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: 0.5,
+    decayInterval: 10,
+    decayAmount: 0.5,
+  }, 'curiosity');
+
+  assert.deepEqual(state.brightness, [1, 1, 1, 1, 1]);
+
+  state = activateDome(state, 1, 0);
+  state = advanceLighting(state, 20);
+
+  assert.deepEqual(state.brightness, [1, 1, 1, 0.5, 0.25]);
+});
+
+test('recalculates the Curiosity fade wave when the pedestrian reaches a new dome', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: 0.5,
+    decayInterval: 10,
+    decayAmount: 0.5,
+  }, 'curiosity');
+
+  state = activateDome(state, 1, 0);
+  state = advanceLighting(state, 20);
+  state = activateDome(state, 2, 20);
+  state = advanceLighting(state, 40);
+
+  assert.deepEqual(state.brightness, [0.25, 1, 1, 0.5, 0.125]);
+});
+
+test('gradually restores every Curiosity dome after the pedestrian leaves', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: 0.5,
+    decayInterval: 10,
+    decayAmount: 0.5,
+  }, 'curiosity');
+
+  state = activateDome(state, 1, 0);
+  state = advanceLighting(state, 20);
+  state = clearActivation(state, 20);
+  state = advanceLighting(state, 100);
+
+  assert.deepEqual(state.brightness, [1, 1, 1, 0.9375, 0.625]);
+});
