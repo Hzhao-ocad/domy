@@ -193,3 +193,46 @@ test('treats repeated empty Curiosity source sets as one exit recovery wave', ()
 
   assert.deepEqual(state.brightness, [1, 1, 1, .9375, .625]);
 });
+
+test('sends a Ripple outward from the nearby dome in both directions', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 100,
+    decayAmount: 0,
+  }, 'ripple');
+
+  state = activateDome(state, 2, 0);
+  state = advanceLighting(state, 20);
+
+  assert.deepEqual(state.brightness, [0, .5, 1, .5, 0]);
+});
+
+test('keeps a Halo centered on the nearby dome', () => {
+  let state = createLightingState(5, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 100,
+    decayAmount: .5,
+  }, 'halo');
+
+  state = activateDome(state, 2, 0);
+  state = advanceLighting(state, 0);
+
+  assert.deepEqual(state.brightness, [.25, .5, 1, .5, .25]);
+});
+
+test('leaves an Afterglow after the walker moves away', () => {
+  let state = createLightingState(3, {
+    propagationDelay: 20,
+    propagationFactor: .5,
+    decayInterval: 50,
+    decayAmount: .5,
+  }, 'afterglow');
+
+  state = activateDome(state, 1, 0);
+  state = clearActivation(state, 0);
+  state = advanceLighting(state, 50);
+
+  assert.deepEqual(state.brightness, [0, .875, 0]);
+});

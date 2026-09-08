@@ -5,7 +5,12 @@ export type LightingOptions = {
   decayAmount: number;
 };
 
-export type LightingBehavior = 'direction' | 'curiosity';
+export type LightingBehavior =
+  | 'direction'
+  | 'curiosity'
+  | 'ripple'
+  | 'halo'
+  | 'afterglow';
 type PropagationDirection = -1 | 1 | null;
 
 export type LightingState = {
@@ -185,8 +190,62 @@ function advanceDirection(state: LightingState, time: number): LightingState {
   };
 }
 
+function advanceRipple(state: LightingState, time: number): LightingState {
+  if (state.activeIndexes.length === 0) return advanceDirection(state, time);
+
+  return {
+    ...state,
+    brightness: state.brightness.map((_, index) => {
+      if (state.activeIndexes.includes(index)) return 1;
+      return state.activeIndexes.reduce((brightest, source) => {
+        const distance = Math.abs(index - source);
+        const arrivedAt = state.activationTime + distance * state.options.propagationDelay;
+        if (time < arrivedAt) return brightest;
+        const age = Math.floor((time - arrivedAt) / state.options.decayInterval);
+        return Math.max(
+          brightest,
+          roundBrightness(
+            state.options.propagationFactor ** distance
+              * (1 - state.options.decayAmount) ** age,
+          ),
+        );
+      }, 0);
+    }),
+  };
+}
+
+function advanceHalo(state: LightingState, time: number): LightingState {
+  if (state.activeIndexes.length === 0) return advanceDirection(state, time);
+
+  return {
+    ...state,
+    lastDecayTime: time,
+    brightness: state.brightness.map((_, index) =>
+      roundBrightness(
+        state.options.propagationFactor ** Math.min(
+          ...state.activeIndexes.map((source) => Math.abs(index - source)),
+        ),
+      )),
+  };
+}
+
+function advanceAfterglow(state: LightingState, time: number): LightingState {
+  const steps = Math.floor((time - state.lastDecayTime) / state.options.decayInterval);
+  if (steps <= 0) return state;
+
+  const multiplier = (1 - state.options.decayAmount * .25) ** steps;
+  return {
+    ...state,
+    lastDecayTime: state.lastDecayTime + steps * state.options.decayInterval,
+    brightness: state.brightness.map((value, index) =>
+      state.activeIndexes.includes(index) ? 1 : roundBrightness(value * multiplier)),
+  };
+}
+
 export function advanceLighting(state: LightingState, time: number): LightingState {
-  return state.behavior === 'curiosity'
-    ? advanceCuriosity(state, time)
-    : advanceDirection(state, time);
+  if (state.behavior === 'curiosity') return advanceCuriosity(state, time);
+  if (state.behavior === 'ripple') return advanceRipple(state, time);
+  if (state.behavior === 'halo') return advanceHalo(state, time);
+  if (state.behavior === 'afterglow') return advanceAfterglow(state, time);
+  return advanceDirection(state, time);
 }

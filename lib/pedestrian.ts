@@ -12,14 +12,14 @@ export class Pedestrian {
   readonly position = this.group.position;
   readonly hasCap: boolean;
   complete = false;
-  private readonly options: PedestrianOptions;
+  private speed: number;
   private target = new THREE.Vector3();
   private samples: readonly THREE.Vector3[] = [];
   private sampleIndex = 0;
   private followingPath = false;
 
   constructor(options: PedestrianOptions) {
-    this.options = options;
+    this.speed = options.speed;
     this.hasCap = options.role === 'manual';
 
     const shirt = new THREE.MeshStandardMaterial({ color: options.clothes?.upper ?? '#3f6470', roughness: .8 });
@@ -71,6 +71,8 @@ export class Pedestrian {
     this.followingPath = false;
   }
 
+  setSpeed(speed: number) { this.speed = speed; }
+
   setPath(samples: readonly THREE.Vector3[], index: number) {
     this.samples = samples;
     this.sampleIndex = index;
@@ -88,7 +90,7 @@ export class Pedestrian {
   }
 
   update(delta: number): boolean {
-    const distance = this.position.distanceTo(this.target), step = Math.min(this.options.speed * delta, distance);
+    const distance = this.position.distanceTo(this.target), step = Math.min(this.speed * delta, distance);
     if (distance) this.position.add(this.target.clone().sub(this.position).normalize().multiplyScalar(step));
     const arrived = distance <= step;
     if (this.followingPath && this.samples.length > 1 && this.sampleIndex === this.samples.length - 1 && arrived) this.complete = true;

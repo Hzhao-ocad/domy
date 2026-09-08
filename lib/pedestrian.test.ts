@@ -12,6 +12,14 @@ test('moves toward a target without teleporting', () => {
   assert.equal(walker.position.x, 1);
 });
 
+test('updates the movement speed while a walker is travelling', () => {
+  const walker = new Pedestrian({ role: 'manual', speed: 2 });
+  walker.setTerrainTarget(new THREE.Vector3(8, 0, 0));
+  walker.setSpeed(6);
+  walker.update(.5);
+  assert.equal(walker.position.x, 3);
+});
+
 test('completes only after arriving at the final path point', () => {
   const walker = new Pedestrian({ role: 'path', speed: 10 });
 

@@ -1,5 +1,20 @@
 import type { LightingBehavior } from './lighting';
 
+export type BehaviorPreset = {
+  factor: number;
+  delay: number;
+  decayStep: number;
+  decay: number;
+};
+
+const behaviorPreset = (overrides: Partial<BehaviorPreset> = {}): BehaviorPreset => ({
+  factor: 0.25,
+  delay: 20,
+  decayStep: 10,
+  decay: 0.2,
+  ...overrides,
+});
+
 export const defaults = {
   count: 10,
   radius: 1.15,
@@ -12,6 +27,7 @@ export const defaults = {
   pedestrianPathWidth: 3.9,
   pedestrianOffset: -5,
   pedestrianPointCount: 37,
+  walkerSpeed: 6,
   controlPoints: [
     { x: -27.558583439162877, y: -22.35792423128448 },
     { x: -17.46775840959009, y: -8.746485078031245 },
@@ -33,11 +49,14 @@ export const defaults = {
   pointLightsPerDome: 4,
   pointLightIntensity: 15.4,
   pointLightRange: 22,
-  behavior: 'direction' as LightingBehavior,
-  factor: 0.25,
-  delay: 20,
-  decayStep: 10,
-  decay: 0.2,
+  behavior: 'ripple' as LightingBehavior,
+  behaviorPresets: {
+    direction: behaviorPreset(),
+    curiosity: behaviorPreset(),
+    ripple: behaviorPreset({ factor: 0.51, decay: 0.01 }),
+    halo: behaviorPreset({ factor: 0.31, delay: 30, decayStep: 40, decay: 0.09 }),
+    afterglow: behaviorPreset({ decay: 0.04 }),
+  } satisfies Record<LightingBehavior, BehaviorPreset>,
   activationDistance: 20,
   showPoints: false,
   showHandles: false,
