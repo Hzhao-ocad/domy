@@ -18,3 +18,14 @@ export function nearestPointIndex(
     return distance < closestDistance ? index : closest;
   }, 0);
 }
+
+export function nearestPointWithinDistance(
+  points: PathControlPoint[],
+  target: PathControlPoint,
+  maxDistance: number,
+): number | null {
+  const index = nearestPointIndex(points, target);
+  const point = points[index];
+  const distance = Math.hypot(point.x - target.x, point.y - target.y);
+  return distance <= maxDistance ? index : null;
+}

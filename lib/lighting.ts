@@ -9,6 +9,7 @@ export type LightingState = {
   brightness: number[];
   options: LightingOptions;
   activeIndex: number | null;
+  propagationDirection: -1 | 1 | null;
   activationTime: number;
   lastDecayTime: number;
 };
@@ -23,6 +24,7 @@ export function createLightingState(
     brightness: Array.from({ length: count }, () => 0),
     options,
     activeIndex: null,
+    propagationDirection: null,
     activationTime: 0,
     lastDecayTime: 0,
   };
@@ -36,6 +38,9 @@ export function activateDome(
   return {
     ...state,
     activeIndex: index,
+    propagationDirection: state.activeIndex === null || state.activeIndex === index
+      ? null
+      : index > state.activeIndex ? 1 : -1,
     activationTime: time,
     lastDecayTime: time,
     brightness: state.brightness.map((value, domeIndex) =>
@@ -51,6 +56,7 @@ export function clearActivation(
   return {
     ...state,
     activeIndex: null,
+    propagationDirection: null,
     lastDecayTime: time,
   };
 }
@@ -69,10 +75,12 @@ export function advanceLighting(
         ? state.lastDecayTime + steps * state.options.decayInterval
         : state.lastDecayTime,
       brightness: state.brightness.map((value, index) => {
-        const distance = Math.abs(index - state.activeIndex!);
+        const distance = (index - state.activeIndex!) * (state.propagationDirection ?? 0);
         const arrivalTime = state.activationTime + distance * state.options.propagationDelay;
         const propagation = roundBrightness(state.options.propagationFactor ** distance);
-        const refreshed = time >= arrivalTime ? propagation : value;
+        const isSource = index === state.activeIndex;
+        const movesForward = state.propagationDirection !== null && distance > 0;
+        const refreshed = (isSource || movesForward) && time >= arrivalTime ? propagation : value;
         const brightness = steps > 0
           ? roundBrightness(refreshed * multiplier)
           : refreshed;
