@@ -21,7 +21,11 @@ import { Pedestrian, pedestrianHeightForDomeRadius } from '@/lib/pedestrian';
 import { mergePreset, updateBehaviorPreset } from '@/lib/preset';
 import { serializePreset } from '@/lib/preset-export';
 import { selectColorPointLights } from '@/lib/scene-lighting';
-import { isPointerClick, projectOutsideCircles } from '@/lib/walker-geometry';
+import {
+  isPointerClick,
+  projectOutsideCircles,
+  wasdDirection,
+} from '@/lib/walker-geometry';
 import { activeDomeIndexes, createRoamingRoute } from '@/lib/walker-simulation';
 
 type Params = typeof defaults;
@@ -173,7 +177,6 @@ export default function Home() {
     rebuild: () => void;
     refreshPath: () => void;
     reset: () => void;
-    moveManualWalker: (direction: -1 | 1) => void;
     spawnPathWalkers: (count: number) => void;
     spawnRoamingWalkers: (count: number) => void;
   } | null>(null);
@@ -226,7 +229,8 @@ export default function Home() {
       500,
     );
     camera.up.set(0, 0, 1);
-    camera.position.set(28, -48, 40);
+    camera.position.set(-28, 48, 40);
+    const cameraForward = new THREE.Vector3();
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(host.clientWidth, host.clientHeight);
@@ -676,6 +680,7 @@ export default function Home() {
     let dragging: number | null = null,
       orbiting = false,
       pointerStart: { x: number; y: number } | null = null;
+    const pressedMovementKeys = new Set<string>();
     const groundPoint = (e: PointerEvent) => {
       const box = renderer.domElement.getBoundingClientRect();
       pointer.set(
@@ -753,22 +758,33 @@ export default function Home() {
       pointerStart = null;
     };
     const keydown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if ('wasd'.includes(key)) {
+        e.preventDefault();
+        pressedMovementKeys.add(key);
+        return;
+      }
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
       moveManualWalker(e.key === 'ArrowLeft' ? -1 : 1);
     };
+    const keyup = (e: KeyboardEvent) => {
+      pressedMovementKeys.delete(e.key.toLowerCase());
+    };
+    const clearMovementKeys = () => pressedMovementKeys.clear();
     renderer.domElement.addEventListener('pointerdown', down);
     renderer.domElement.addEventListener('pointermove', move);
     renderer.domElement.addEventListener('pointerup', up);
     window.addEventListener('keydown', keydown);
+    window.addEventListener('keyup', keyup);
+    window.addEventListener('blur', clearMovementKeys);
     api.current = {
       rebuild,
       refreshPath,
-      moveManualWalker,
       spawnPathWalkers,
       spawnRoamingWalkers,
       reset: () => {
-        camera.position.set(28, -48, 40);
+        camera.position.set(-28, 48, 40);
         orbit.target.set(0, 0, 0.6);
         orbit.update();
       },
@@ -792,6 +808,22 @@ export default function Home() {
       [manualWalker, ...simulatedWalkers].forEach((walker) =>
         walker.setSpeed(v.walkerSpeed),
       );
+      camera.getWorldDirection(cameraForward);
+      const direction = wasdDirection(pressedMovementKeys, cameraForward);
+      if (direction.x || direction.y) {
+        const length = Math.hypot(direction.x, direction.y);
+        const target = projectOutsideCircles(
+          {
+            x: manualWalker.position.x + direction.x / length * v.walkerSpeed * dt,
+            y: manualWalker.position.y + direction.y / length * v.walkerSpeed * dt,
+          },
+          domeCircles(),
+          0.18,
+        );
+        manualFollowsPath = false;
+        manualWalker.setTerrainTarget(new THREE.Vector3(target.x, target.y, 0.02));
+        manualWalker.visible = true;
+      }
       manualWalker.update(dt);
       simulatedWalkers.forEach((walker) => {
         const state = simulationStates.get(walker)!;
@@ -939,6 +971,8 @@ export default function Home() {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
       window.removeEventListener('keydown', keydown);
+      window.removeEventListener('keyup', keyup);
+      window.removeEventListener('blur', clearMovementKeys);
       renderer.domElement.removeEventListener('pointerdown', down);
       renderer.domElement.removeEventListener('pointermove', move);
       renderer.domElement.removeEventListener('pointerup', up);
@@ -1025,24 +1059,6 @@ export default function Home() {
             {behavior.label}
           </button>
         ))}
-      </div>
-      <div className="manual-controls">
-        <button
-          type="button"
-          aria-label="Move left"
-          onClick={() => api.current?.moveManualWalker(-1)}
-        >
-          <span aria-hidden="true">←</span>
-          <small>Move left</small>
-        </button>
-        <button
-          type="button"
-          aria-label="Move right"
-          onClick={() => api.current?.moveManualWalker(1)}
-        >
-          <span aria-hidden="true">→</span>
-          <small>Move right</small>
-        </button>
       </div>
       <div className="hint">
         Drag to orbit · Right drag to pan · Scroll to zoom · Drag white nodes to

@@ -51,3 +51,22 @@ export function isPointerClick(
 ): boolean {
   return Math.hypot(end.x - start.x, end.y - start.y) <= maximumDistance;
 }
+
+
+export function wasdDirection(
+  keys: ReadonlySet<string>,
+  cameraForward: GroundPoint,
+): GroundPoint {
+  const length = Math.hypot(cameraForward.x, cameraForward.y);
+  const forward = {
+    x: cameraForward.x / length,
+    y: cameraForward.y / length,
+  };
+  const forwardAmount = (keys.has('w') ? 1 : 0) - (keys.has('s') ? 1 : 0);
+  const sidewaysAmount = (keys.has('d') ? 1 : 0) - (keys.has('a') ? 1 : 0);
+
+  return {
+    x: forward.x * forwardAmount + forward.y * sidewaysAmount,
+    y: forward.y * forwardAmount - forward.x * sidewaysAmount,
+  };
+}

@@ -5,6 +5,7 @@ import {
   isNearPerpendicular,
   isPointerClick,
   projectOutsideCircles,
+  wasdDirection,
 } from './walker-geometry.ts';
 
 test('projects a pointer target outside a Dome footprint', () => {
@@ -29,4 +30,15 @@ test('measures clearance and rejects perpendicular route directions', () => {
 test('recognizes a short pointer press without treating a drag as a destination', () => {
   assert.equal(isPointerClick({ x: 12, y: 18 }, { x: 15, y: 21 }), true);
   assert.equal(isPointerClick({ x: 12, y: 18 }, { x: 20, y: 18 }), false);
+});
+
+test('combines held WASD keys into a terrain direction', () => {
+  assert.deepEqual(
+    wasdDirection(new Set(['w', 'd']), { x: 1, y: 0 }),
+    { x: 1, y: -1 },
+  );
+  assert.deepEqual(
+    wasdDirection(new Set(['a', 's']), { x: 0, y: -1 }),
+    { x: 1, y: 1 },
+  );
 });

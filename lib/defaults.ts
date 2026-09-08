@@ -27,7 +27,7 @@ export const defaults = {
   pedestrianPathWidth: 3.9,
   pedestrianOffset: -5,
   pedestrianPointCount: 37,
-  walkerSpeed: 6,
+  walkerSpeed: 12,
   controlPoints: [
     { x: -27.558583439162877, y: -22.35792423128448 },
     { x: -17.46775840959009, y: -8.746485078031245 },
